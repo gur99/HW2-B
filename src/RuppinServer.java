@@ -29,14 +29,19 @@ public class RuppinServer {
 			try {
 				Socket connection = serverSocket.accept();
 				System.out.println("Client connected " + clientCounter++);
-				RuppinProtocol protocol = new RuppinProtocol();
+				RuppinProtocol protocol = new RuppinProtocol(this);
 				ConnectionHandler handler = new ConnectionHandler(connection, protocol);
+//				ConnectionHandler handler = new ConnectionHandler(connection);
 				new Thread(handler).start();
 			} catch (IOException e) {
 				System.err.println("Accept failed.");
 				System.exit(1);
 			}
 		}
+	}
+
+	public ArrayList<Client> getClientState() {
+		return clientState;
 	}
 
 	// Adds a new user to the clientState list
@@ -70,6 +75,17 @@ public class RuppinServer {
 		return false;
 	}
 
+	public synchronized boolean changePassword(String username, String oldPassword, String newPassword) {
+		for (Client client : clientState) {
+			if (client.getUsername().equals(username) && (client.getPassword().equals(oldPassword))
+					&& !(newPassword.equals(oldPassword))) {
+				client.setPassword(newPassword);
+				return true; // Password changed successfully
+			}
+		}
+		return false; // Old password is incorrect or user not found
+	}
+
 	// Updates the state of an existing user
 	public synchronized boolean updateUserState(String username, boolean isStudent, boolean isHappy) {
 		for (int i = 0; i < clientState.size(); i++) {
@@ -84,7 +100,6 @@ public class RuppinServer {
 	}
 
 	public static class ConnectionHandler implements Runnable {
-		private RuppinServer server;
 		private Socket connection;
 		private RuppinProtocol protocol;
 
@@ -96,6 +111,7 @@ public class RuppinServer {
 		@Override
 		public void run() {
 			try {
+
 				PrintWriter out = new PrintWriter(connection.getOutputStream(), true);
 				BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
 
@@ -114,37 +130,8 @@ public class RuppinServer {
 					if (outputLine.equals("Thanks")) {
 						break;
 					}
-					if (outputLine.equals("Choose your username:")) {
-						username = inputLine;
-					} else if (outputLine.equals("Name OK. Choose your password :")) {
-						String password = inputLine;
-						if (server.addUser(username, password, false, false)) {
-							isNewUser = true;
-						} else {
-							out.println("Username already exists.");
-							break;
-						}
-					} else if (outputLine.equals("Password OK. Are you a student at Ruppin? (y/n)")) {
-						isStudent = inputLine.equalsIgnoreCase("y");
-					} else if (outputLine.equals("Are you Happy? (y/n)")) {
-						isHappy = inputLine.equalsIgnoreCase("y");
-						if (isNewUser) {
-							server.updateUserState(username, isStudent, isHappy);
-						}
-						out.println("Thanks");
-						break;
-					} else if (outputLine.startsWith("Last time you gave me the following information:")) {
-						// Handle user updates
-						if (inputLine.equalsIgnoreCase("n")) {
-							out.println("Thanks");
-							break;
-						} else if (inputLine.equalsIgnoreCase("y")) {
-							// Logic to update user details
-						}
-					}
 
 				}
-
 				out.close();
 				in.close();
 				connection.close();

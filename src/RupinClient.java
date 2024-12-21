@@ -29,7 +29,7 @@ public class RupinClient {
 		String fromUser;
 		while ((fromServer = in.readLine()) != null) {
 			System.out.println("Server: " + fromServer);
-			if (fromServer.equals("Bye."))
+			if (fromServer.equals("Thanks"))
 				break;
 
 			fromUser = stdIn.readLine();

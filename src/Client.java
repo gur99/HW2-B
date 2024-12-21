@@ -6,8 +6,10 @@ public class Client {
 	private Boolean isHappy;
 
 	public Client(String username, String password, Boolean isStudent, Boolean isHappy) {
+
 		setUsername(username); // Use the setter to enforce validation
 		setPassword(password); // Use the setter to enforce validation
+
 		this.isHappy = isHappy;
 		this.isStudent = isStudent;
 	}
