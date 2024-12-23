@@ -1,10 +1,18 @@
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Date;
 
 public class RuppinServer {
 
@@ -12,7 +20,7 @@ public class RuppinServer {
 	private ServerSocket serverSocket = null;
 
 	public void startRuppinServer() {
-
+		loadClientsFromFile();
 		try {
 			serverSocket = new ServerSocket(4445);
 			System.out.println("SERVER listening on port: 4445");
@@ -51,6 +59,11 @@ public class RuppinServer {
 		}
 		Client newClient = new Client(username, password, isStudent, isHappy);
 		clientState.add(newClient);
+
+		// Check if the number of users is divisible by 3 and save backup
+		if (clientState.size() % 3 == 0) {
+			saveBackupToFile();
+		}
 		return true;
 	}
 
@@ -86,17 +99,67 @@ public class RuppinServer {
 		return false; // Old password is incorrect or user not found
 	}
 
-	// Updates the state of an existing user
-	public synchronized boolean updateUserState(String username, boolean isStudent, boolean isHappy) {
-		for (int i = 0; i < clientState.size(); i++) {
-			Client client = clientState.get(i);
-			if (client.getUsername().equals(username)) {
-				client.setIsStudent(isStudent);
-				client.setIsHappy(isHappy);
-				return true;
+	// Saves the current clientState to a backup CSV file
+	private void saveBackupToFile() {
+		String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+		String fileName = "backup_" + timestamp + ".csv";
+
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(fileName))) {
+			for (Client client : clientState) {
+				String line = String.join(",", client.getUsername(), client.getPassword(),
+						String.valueOf(client.getIsStudent()), String.valueOf(client.getIsHappy()));
+				writer.write(line);
+				writer.newLine();
 			}
+			System.out.println("Backup saved to " + fileName);
+		} catch (IOException e) {
+			System.err.println("Error saving backup: " + e.getMessage());
 		}
-		return false;
+	}
+
+	// Updates the state of an existing user
+//	public synchronized boolean updateUserState(String username, boolean isStudent, boolean isHappy) {
+//		for (int i = 0; i < clientState.size(); i++) {
+//			Client client = clientState.get(i);
+//			if (client.getUsername().equals(username)) {
+//				client.setIsStudent(isStudent);
+//				client.setIsHappy(isHappy);
+//				return true;
+//			}
+//		}
+//		return false;
+//	}
+	// Loads clients from the most recent backup file
+	private void loadClientsFromFile() {
+		try {
+			// Find the most recent backup file
+			File dir = new File(".");
+			File[] files = dir.listFiles((d, name) -> name.startsWith("backup_") && name.endsWith(".csv"));
+			if (files == null || files.length == 0) {
+				System.out.println("No backup file found. Starting with an empty client list.");
+				return;
+			}
+
+			Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
+			File mostRecentFile = files[0];
+
+			System.out.println("Loading clients from " + mostRecentFile.getName());
+			try (BufferedReader reader = new BufferedReader(new FileReader(mostRecentFile))) {
+				String line;
+				while ((line = reader.readLine()) != null) {
+					String[] parts = line.split(",");
+					if (parts.length == 4) {
+						String username = parts[0];
+						String password = parts[1];
+						boolean isStudent = Boolean.parseBoolean(parts[2]);
+						boolean isHappy = Boolean.parseBoolean(parts[3]);
+						clientState.add(new Client(username, password, isStudent, isHappy));
+					}
+				}
+			}
+		} catch (IOException e) {
+			System.err.println("Error loading clients from file: " + e.getMessage());
+		}
 	}
 
 	public static class ConnectionHandler implements Runnable {
@@ -119,11 +182,6 @@ public class RuppinServer {
 				outputLine = protocol.processInput(null);
 				out.println(outputLine);
 
-				String username = null;
-				boolean isNewUser = false;
-				boolean isStudent = false;
-				boolean isHappy = false;
-
 				while ((inputLine = in.readLine()) != null) {
 					outputLine = protocol.processInput(inputLine);
 					out.println(outputLine);
@@ -138,6 +196,15 @@ public class RuppinServer {
 
 			} catch (IOException ioe) {
 				System.err.println("Problem connecting to server.");
+			}
+
+			finally {
+				try {
+					if (connection != null)
+						connection.close();
+				} catch (IOException e) {
+					System.err.println("Error closing client socket: " + e.getMessage());
+				}
 			}
 		}
 	}

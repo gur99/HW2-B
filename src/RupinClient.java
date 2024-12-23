@@ -24,9 +24,11 @@ public class RupinClient {
 			System.err.println("Couldn't get I/O for the connection to: your host.");
 			System.exit(1);
 		}
+
 		BufferedReader stdIn = new BufferedReader(new InputStreamReader(System.in));
 		String fromServer;
 		String fromUser;
+
 		while ((fromServer = in.readLine()) != null) {
 			System.out.println("Server: " + fromServer);
 			if (fromServer.equals("Thanks"))

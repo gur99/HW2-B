@@ -21,7 +21,7 @@ public class KnockKnockServer {
 
 		while (true) {
 
-			Socket clientSocket = null;
+//			Socket clientSocket = null;
 
 			try {
 				Socket connection = serverSocket.accept();
@@ -56,8 +56,9 @@ public class KnockKnockServer {
 				outputLine = kkp.processInput(null);
 				out.println(outputLine);
 				while ((inputLine = in.readLine()) != null) {
-					if (inputLine.equals("q"))
+					if (inputLine.equals("q")) {
 						break;
+					}
 					outputLine = kkp.processInput(inputLine);
 					out.println(outputLine);
 				}
@@ -67,7 +68,16 @@ public class KnockKnockServer {
 
 			} catch (IOException ioe) {
 				System.err.println("problem connecting to server");
+			} finally {
+				try {
+					if (connection != null)
+						connection.close();
+				} catch (IOException e) {
+					System.err.println("Error closing client socket: " + e.getMessage());
+				}
 			}
+
 		}
+
 	}
 }
