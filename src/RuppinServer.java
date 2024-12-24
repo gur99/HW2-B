@@ -100,7 +100,7 @@ public class RuppinServer {
 	}
 
 	// Saves the current clientState to a backup CSV file
-	private void saveBackupToFile() {
+	private synchronized void saveBackupToFile() {
 		String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
 		String fileName = "backup_" + timestamp + ".csv";
 
@@ -117,28 +117,20 @@ public class RuppinServer {
 		}
 	}
 
-	// Updates the state of an existing user
-//	public synchronized boolean updateUserState(String username, boolean isStudent, boolean isHappy) {
-//		for (int i = 0; i < clientState.size(); i++) {
-//			Client client = clientState.get(i);
-//			if (client.getUsername().equals(username)) {
-//				client.setIsStudent(isStudent);
-//				client.setIsHappy(isHappy);
-//				return true;
-//			}
-//		}
-//		return false;
-//	}
-	// Loads clients from the most recent backup file
-	private void loadClientsFromFile() {
+	private synchronized void loadClientsFromFile() {
 		try {
-			// Find the most recent backup file
+
+			// Step 1: Look for backup files in the current directory
 			File dir = new File(".");
 			File[] files = dir.listFiles((d, name) -> name.startsWith("backup_") && name.endsWith(".csv"));
+
+			// Step 2: Check if there are any backup files
 			if (files == null || files.length == 0) {
 				System.out.println("No backup file found. Starting with an empty client list.");
 				return;
-			}
+			} // Exit the method if no files are found
+
+			// Step 3: Sort the backup files by their last modified date (newest first)
 
 			Arrays.sort(files, Comparator.comparingLong(File::lastModified).reversed());
 			File mostRecentFile = files[0];
@@ -208,4 +200,68 @@ public class RuppinServer {
 			}
 		}
 	}
+
+//Another simple but LONG way of writing loadClientFromFile method
+//	private synchronized void loadClientsFromFile() {
+//		try {
+//			// Step 1: Look for backup files in the current directory
+//			File currentDirectory = new File(".");
+//			File[] backupFiles = currentDirectory.listFiles(new FilenameFilter() {
+//				@Override
+//				public boolean accept(File dir, String fileName) {
+//					return fileName.startsWith("backup_") && fileName.endsWith(".csv");
+//				}
+//			});
+//
+//			// Step 2: Check if there are any backup files
+//			if (backupFiles == null || backupFiles.length == 0) {
+//				System.out.println("No backup files found. Starting with an empty client list.");
+//				return; // Exit the method if no files are found
+//			}
+//
+//			// Step 3: Manually sort the backup files by their last modified date (newest
+//			// first)
+//			for (int i = 0; i < backupFiles.length - 1; i++) {
+//				for (int j = i + 1; j < backupFiles.length; j++) {
+//					// Compare the last modified times of the two files
+//					if (backupFiles[i].lastModified() < backupFiles[j].lastModified()) {
+//						// Swap files[i] and files[j] if i is older than j
+//						File temp = backupFiles[i];
+//						backupFiles[i] = backupFiles[j];
+//						backupFiles[j] = temp;
+//					}
+//				}
+//			}
+//
+//			// Step 4: Select the most recent backup file
+//			File mostRecentBackup = backupFiles[0];
+//			System.out.println("Loading clients from " + mostRecentBackup.getName());
+//
+//			// Step 5: Open the backup file for reading
+//			try (BufferedReader reader = new BufferedReader(new FileReader(mostRecentBackup))) {
+//				String line;
+//
+//				// Step 6: Read each line from the file
+//				while ((line = reader.readLine()) != null) {
+//					// Split the line into parts separated by commas
+//					String[] clientData = line.split(",");
+//
+//					// Ensure the line has exactly 4 parts
+//					if (clientData.length == 4) {
+//						String username = clientData[0];
+//						String password = clientData[1];
+//						boolean isStudent = Boolean.parseBoolean(clientData[2]);
+//						boolean isHappy = Boolean.parseBoolean(clientData[3]);
+//
+//						// Create a new Client object and add it to the client list
+//						clientState.add(new Client(username, password, isStudent, isHappy));
+//					}
+//				}
+//			}
+//		} catch (IOException e) {
+//			// Print an error message if something goes wrong
+//			System.err.println("Error loading clients from file: " + e.getMessage());
+//		}
+//	}
+
 }
